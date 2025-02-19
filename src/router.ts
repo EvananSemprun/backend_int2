@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { createAccount, updateAdminBalance, login } from './handlers';
+import { createAccount, updateAdminBalance, login, getAdminBalance, getUser } from './handlers';
 import { handleInputErrors } from './middleware/validation'
 import { body } from 'express-validator'
+import { authenticate } from './middleware/auth';
 
 const router = Router();
 
@@ -9,8 +10,7 @@ router.get('/', (req, res) => {
     res.send('Bienvenido a la API');
 });
 
-router.post(
-    '/auth/register',
+router.post('/auth/register',
     body('handle')
         .notEmpty()
         .withMessage('El handle no puede ir vacío'),
@@ -52,14 +52,17 @@ router.post('/auth/login',
     login
 )
 
-router.put(
-    '/admin/balance',
+router.put('/admin/balance',
     body('api_key').optional().notEmpty().withMessage('La API key es obligatoria si se incluye'),
     body('api_secret').optional().notEmpty().withMessage('El API secret es obligatorio si se incluye'),
     body('saldo').isNumeric().withMessage('El saldo debe ser un número'),
     handleInputErrors,
     updateAdminBalance
 );
+
+router.get('/admin/balance', getAdminBalance);
+
+router.get('/user', authenticate, getUser)
 
 
 export default router;

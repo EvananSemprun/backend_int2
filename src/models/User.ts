@@ -37,9 +37,9 @@ const userSchema = new Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'vendedor', 'cliente'],
+    enum: ['admin', 'vendedor', 'cliente', 'master'],
     required: true
-  },
+  },  
   saldo: {
     type: Number,
     min: 100,
@@ -48,15 +48,16 @@ const userSchema = new Schema({
       validator: async function (value) {
         if (this.role === 'cliente') {
           return value >= 100;
-        } else if (this.role === 'admin' || this.role === 'vendedor') {
+        } else if (['admin', 'vendedor', 'master'].includes(this.role)) {
           const adminBalance = await AdminBalance.findOne().sort({ created_at: -1 }).limit(1);
           return adminBalance && value === adminBalance.saldo;
         }
         return true;
       },
-      message: 'El saldo debe ser al menos 100 o el mismo saldo que el administrador para los roles admin y vendedor.'
+      message: 'El saldo debe ser al menos 100 o el mismo saldo que el administrador para los roles admin, vendedor o master.'
     }
   }
+  
 });
 
 userSchema.index({ handle: 1, email: 1 }, { unique: true });

@@ -1,12 +1,13 @@
 import type { Request, Response } from 'express';
 import User from "../models/User";
-import { checkPassword, hashPassword ,hashApiKeyAndSecret } from '../utils/auth'
+import { checkPassword, hashPassword  } from '../utils/auth'
 import slug from 'slug'
 import { validationResult } from 'express-validator'
 import AdminBalance from '../models/admin_balance';
 import bcrypt from 'bcrypt'
 import { generateJWT } from '../utils/jwt';
 import jwt from 'jsonwebtoken'
+import Product from '../models/Product';
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -27,24 +28,23 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
 
         let saldo = 0;
         
-        if (role === 'admin' || role === 'vendedor') {
+        if (role === 'admin' || role === 'vendedor' || role === 'master') {
             const adminBalance = await AdminBalance.findOne().sort({ created_at: -1 }).limit(1);
             if (adminBalance) {
-                saldo = adminBalance.saldo;
+              saldo = adminBalance.saldo;
             } else {
-                res.status(400).json({ error: 'No se encontró el saldo para el rol' });
-                return;
+              res.status(400).json({ error: 'No se encontró el saldo para el rol' });
+              return;
             }
-        } else if (role === 'cliente') {
-            // Para clientes, validamos el saldo
+          } else if (role === 'cliente') {
             if (!userSaldo || userSaldo < 100) {
-                res.status(400).json({ error: 'El saldo para el cliente debe ser al menos 100' });
-                return;
+              res.status(400).json({ error: 'El saldo para el cliente debe ser al menos 100' });
+              return;
             }
-            saldo = userSaldo; 
-        }
+            saldo = userSaldo;
+          }
+          
 
-        // Creación del nuevo usuario
         const user = new User(req.body);
         user.password = await hashPassword(password);
         user.handle = handle;
@@ -99,8 +99,6 @@ export const updateAdminBalance = async (req: Request, res: Response): Promise<v
     }
 };
 
-
-
 export const getAdminBalance = async (req: Request, res: Response): Promise<void> => {
     try {
         const adminBalance = await AdminBalance.findOne().sort({ created_at: -1 }).limit(1);
@@ -148,3 +146,81 @@ export const login = async (req: Request, res: Response) => {
 export const getUser = async (req: Request, res: Response) => {
     res.json(req.user)
 }
+
+export const getUserCounts = async (req: Request, res: Response) => {
+    try {
+        if (!req.user || req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'No autorizado' });
+        }
+
+        const adminCount = await User.countDocuments({ role: 'admin' });
+        const sellerCount = await User.countDocuments({ role: 'vendedor' });
+        const clientCount = await User.countDocuments({ role: 'cliente' });
+
+        res.json({ adminCount, sellerCount, clientCount });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener las estadísticas' });
+    }
+};
+
+export const createProduct = async (req: Request, res: Response) => {
+    try {
+        const { product_group, name, code, type, price, special_price, available } = req.body;
+
+        // Verificar si ya existe un producto con el mismo código
+        const productExists = await Product.findOne({ code });
+        if (productExists) {
+            return res.status(409).json({ error: 'El producto con este código ya está registrado' });
+        }
+
+        // Crear el nuevo producto
+        const product = new Product({ product_group, name, code, type, price, special_price, available });
+        await product.save();
+        res.status(201).json({ message: 'Producto creado exitosamente', product });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al crear el producto' });
+    }
+};
+export const getProducts = async (req: Request, res: Response) => {
+    try {
+        const products = await Product.find();
+        res.status(200).json(products);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener los productos' });
+    }
+};
+
+export const updateProduct = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { product_group, name, code, type, price, special_price, available } = req.body;
+
+        // Buscar el producto por su ID
+        const product = await Product.findById(id);
+        if (!product) {
+            return res.status(404).json({ error: 'Producto no encontrado' });
+        }
+
+        // Si el código del producto cambia, verificar si ya existe otro producto con ese código
+        if (code && code !== product.code) {
+            const productExists = await Product.findOne({ code });
+            if (productExists) {
+                return res.status(409).json({ error: 'Ya existe un producto con este código' });
+            }
+        }
+
+        // Actualizar los campos del producto
+        product.product_group = product_group || product.product_group;
+        product.name = name || product.name;
+        product.code = code || product.code;
+        product.type = type || product.type;
+        product.price = price || product.price;
+        product.special_price = special_price || product.special_price;
+        product.available = available || product.available;
+
+        await product.save();
+        res.status(200).json({ message: 'Producto actualizado correctamente', product });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al actualizar el producto' });
+    }
+};

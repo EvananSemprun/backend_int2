@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createAccount, updateAdminBalance, login, getAdminBalance, getUser } from './handlers';
+import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct } from './handlers';
 import { handleInputErrors } from './middleware/validation'
 import { body } from 'express-validator'
 import { authenticate } from './middleware/auth';
@@ -26,7 +26,7 @@ router.post('/auth/register',
     body('role')
         .notEmpty()
         .withMessage('El rol es obligatorio')
-        .isIn(['admin', 'vendedor', 'cliente'])
+        .isIn(['admin', 'vendedor', 'cliente','master'])
         .withMessage('El rol debe ser uno de los siguientes: admin, vendedor, cliente'),
     body('saldo').custom((value, { req }) => {
         if (req.body.role === 'cliente' && !value) {
@@ -64,5 +64,72 @@ router.get('/admin/balance', getAdminBalance);
 
 router.get('/user', authenticate, getUser)
 
+router.get('/users/count', authenticate, getUserCounts);
 
+router.post('/products',
+    body('product_group')
+        .notEmpty()
+        .withMessage('El grupo de producto es obligatorio'),
+    body('name')
+        .notEmpty()
+        .withMessage('El nombre del producto es obligatorio'),
+    body('code')
+        .notEmpty()
+        .withMessage('El código del producto es obligatorio')
+        .isLength({ min: 3 })
+        .withMessage('El código debe tener al menos 3 caracteres'),
+    body('type')
+        .notEmpty()
+        .withMessage('El tipo de producto es obligatorio'),
+    body('price')
+        .isFloat({ min: 0 })
+        .withMessage('El precio debe ser un número positivo'),
+    body('special_price')
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage('El precio especial debe ser un número positivo'),
+    body('available')
+        .isBoolean()
+        .withMessage('El campo "available" debe ser verdadero o falso'),
+    handleInputErrors,
+    createProduct
+);
+
+
+router.get('/products', getProducts);
+
+router.put('/products/:id',
+    body('product_group')
+        .optional()
+        .notEmpty()
+        .withMessage('El grupo de producto no puede estar vacío'),
+    body('name')
+        .optional()
+        .notEmpty()
+        .withMessage('El nombre del producto no puede estar vacío'),
+    body('code')
+        .optional()
+        .notEmpty()
+        .withMessage('El código del producto no puede estar vacío')
+        .isLength({ min: 3 })
+        .withMessage('El código debe tener al menos 3 caracteres'),
+    body('type')
+        .optional()
+        .notEmpty()
+        .withMessage('El tipo de producto no puede estar vacío'),
+    body('price')
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage('El precio debe ser un número positivo'),
+    body('special_price')
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage('El precio especial debe ser un número positivo'),
+    body('available')
+        .optional()
+        .isBoolean()
+        .withMessage('El campo "available" debe ser verdadero o falso'),
+    handleInputErrors,
+    updateProduct
+);
 export default router;

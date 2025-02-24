@@ -6,8 +6,9 @@ import { validationResult } from 'express-validator'
 import AdminBalance from '../models/admin_balance';
 import bcrypt from 'bcrypt'
 import { generateJWT } from '../utils/jwt';
-import jwt from 'jsonwebtoken'
 import Product from '../models/Product';
+import Sale from '../models/Sales';
+import mongoose from 'mongoose';
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -222,5 +223,82 @@ export const updateProduct = async (req: Request, res: Response) => {
         res.status(200).json({ message: 'Producto actualizado correctamente', product });
     } catch (error) {
         res.status(500).json({ error: 'Error al actualizar el producto' });
+    }
+};
+
+export const createSale = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { quantity, product, status, order_id, pins } = req.body;
+        const userId = req.user ? req.user._id : null; // Verifica si hay un usuario autenticado
+
+        const adminBalance = await AdminBalance.findOne();
+        if (!adminBalance) {
+            res.status(404).json({ error: 'Saldo del administrador no encontrado' });
+            return;
+        }
+
+        let user = null;
+        let userBalance = 0;
+
+        if (userId) {
+            user = await User.findById(userId);
+            if (!user) {
+                res.status(404).json({ error: 'Usuario no encontrado' });
+                return;
+            }
+
+            if (user.saldo < quantity) {
+                res.status(400).json({ error: 'Saldo insuficiente para el usuario' });
+                return;
+            }
+
+            userBalance = user.saldo;
+        }
+
+        if (adminBalance.saldo < quantity) {
+            res.status(400).json({ error: 'Saldo insuficiente del administrador' });
+            return;
+        }
+
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            if (user) {
+                user.saldo -= quantity;
+                await user.save({ session });
+            }
+
+            adminBalance.saldo -= quantity;
+            await adminBalance.save({ session });
+
+            const sale = new Sale({
+                user: user ? { 
+                    id: user._id, 
+                    handle: user.handle, 
+                    name: user.name, 
+                    email: user.email 
+                } : null, 
+                quantity,
+                product,
+                status,
+                order_id,
+                pins
+            });
+
+            await sale.save({ session });
+
+            await session.commitTransaction();
+            session.endSession();
+
+            res.status(201).json({ message: 'Venta registrada exitosamente', sale });
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            throw error;
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
     }
 };

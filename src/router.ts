@@ -1,8 +1,8 @@
-import { Router } from 'express';
-import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct } from './handlers';
-import { handleInputErrors } from './middleware/validation'
 import { body } from 'express-validator'
+import { Router } from 'express';
 import { authenticate } from './middleware/auth';
+import { handleInputErrors } from './middleware/validation'
+import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale } from './handlers';
 
 const router = Router();
 
@@ -132,4 +132,7 @@ router.put('/products/:id',
     handleInputErrors,
     updateProduct
 );
+
+router.post('/sales', createSale);
+
 export default router;

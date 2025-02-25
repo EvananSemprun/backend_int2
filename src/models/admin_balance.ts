@@ -19,6 +19,7 @@ const adminBalanceSchema = new Schema({
     saldo: {
         type: Number,
         required: true,
+        set: (v: any) => parseFloat(v), 
     },
     created_at: {
         type: Date,

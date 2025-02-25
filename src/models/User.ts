@@ -44,8 +44,9 @@ const userSchema = new Schema({
     type: Number,
     min: 100,
     default: 100,
+    set: (v: any) => parseFloat((parseFloat(v)).toFixed(2)), 
     validate: {
-      validator: async function (value) {
+      validator: async function (value: number) {
         if (this.role === 'cliente') {
           return value >= 100;
         } else if (['admin', 'vendedor', 'master'].includes(this.role)) {
@@ -65,4 +66,3 @@ userSchema.index({ handle: 1, email: 1 }, { unique: true });
 const User = mongoose.model<IUser>('User', userSchema);
 
 export default User;
-

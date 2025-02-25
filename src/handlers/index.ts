@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import User from "../models/User";
-import { checkPassword, hashPassword  } from '../utils/auth'
+import { checkPassword, hashPassword } from '../utils/auth'
 import slug from 'slug'
 import { validationResult } from 'express-validator'
 import AdminBalance from '../models/admin_balance';
@@ -13,7 +13,7 @@ import mongoose from 'mongoose';
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
         const { email, password, role, saldo: userSaldo } = req.body;
-        
+
         const userExists = await User.findOne({ email });
         if (userExists) {
             res.status(409).json({ error: 'Un usuario con ese mail ya está registrado' });
@@ -28,23 +28,23 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
         }
 
         let saldo = 0;
-        
+
         if (role === 'admin' || role === 'vendedor' || role === 'master') {
             const adminBalance = await AdminBalance.findOne().sort({ created_at: -1 }).limit(1);
             if (adminBalance) {
-              saldo = adminBalance.saldo;
+                saldo = adminBalance.saldo;
             } else {
-              res.status(400).json({ error: 'No se encontró el saldo para el rol' });
-              return;
+                res.status(400).json({ error: 'No se encontró el saldo para el rol' });
+                return;
             }
-          } else if (role === 'cliente') {
+        } else if (role === 'cliente') {
             if (!userSaldo || userSaldo < 100) {
-              res.status(400).json({ error: 'El saldo para el cliente debe ser al menos 100' });
-              return;
+                res.status(400).json({ error: 'El saldo para el cliente debe ser al menos 100' });
+                return;
             }
             saldo = userSaldo;
-          }
-          
+        }
+
 
         const user = new User(req.body);
         user.password = await hashPassword(password);
@@ -84,26 +84,33 @@ export const updateAdminBalance = async (req: Request, res: Response): Promise<v
             hashedApiSecret = await bcrypt.hash(api_secret, 10);
         }
 
+        // Actualizar el saldo del administrador con precisión de dos decimales
         adminBalance.api_key = hashedApiKey;
         adminBalance.api_secret = hashedApiSecret;
-        adminBalance.saldo = saldo;
+        adminBalance.saldo = parseFloat(saldo.toFixed(2));
 
         await adminBalance.save();
 
-        // Actualizar saldo de los usuarios con rol 'admin' o 'vendedor'
-        await User.updateMany({ role: { $in: ['admin', 'vendedor'] } }, { $set: { saldo: saldo } });
+        // Actualizar el saldo de los usuarios con roles admin, vendedor y master
+        await User.updateMany(
+            { role: { $in: ['admin', 'vendedor', 'master'] } },
+            { $set: { saldo: parseFloat(saldo.toFixed(2)) } }
+        );
 
-        res.status(200).json({ message: 'Saldo del administrador actualizado correctamente y saldo de administradores y vendedores actualizado' });
+        res.status(200).json({
+            message: 'Saldo del administrador actualizado correctamente y saldo de administradores, vendedores y master actualizado'
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error en el servidor' });
     }
 };
 
+
 export const getAdminBalance = async (req: Request, res: Response): Promise<void> => {
     try {
         const adminBalance = await AdminBalance.findOne().sort({ created_at: -1 }).limit(1);
-        
+
         if (!adminBalance) {
             res.status(404).json({ error: 'No se encontró el saldo del administrador' });
             return;
@@ -141,12 +148,12 @@ export const login = async (req: Request, res: Response) => {
 
     res.send(token)
 
-}
+};
 
 
 export const getUser = async (req: Request, res: Response) => {
     res.json(req.user)
-}
+};
 
 export const getUserCounts = async (req: Request, res: Response) => {
     try {
@@ -168,13 +175,11 @@ export const createProduct = async (req: Request, res: Response) => {
     try {
         const { product_group, name, code, type, price, special_price, available } = req.body;
 
-        // Verificar si ya existe un producto con el mismo código
         const productExists = await Product.findOne({ code });
         if (productExists) {
             return res.status(409).json({ error: 'El producto con este código ya está registrado' });
         }
 
-        // Crear el nuevo producto
         const product = new Product({ product_group, name, code, type, price, special_price, available });
         await product.save();
         res.status(201).json({ message: 'Producto creado exitosamente', product });
@@ -182,6 +187,7 @@ export const createProduct = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Error al crear el producto' });
     }
 };
+
 export const getProducts = async (req: Request, res: Response) => {
     try {
         const products = await Product.find();
@@ -196,13 +202,11 @@ export const updateProduct = async (req: Request, res: Response) => {
         const { id } = req.params;
         const { product_group, name, code, type, price, special_price, available } = req.body;
 
-        // Buscar el producto por su ID
         const product = await Product.findById(id);
         if (!product) {
             return res.status(404).json({ error: 'Producto no encontrado' });
         }
 
-        // Si el código del producto cambia, verificar si ya existe otro producto con ese código
         if (code && code !== product.code) {
             const productExists = await Product.findOne({ code });
             if (productExists) {
@@ -210,7 +214,6 @@ export const updateProduct = async (req: Request, res: Response) => {
             }
         }
 
-        // Actualizar los campos del producto
         product.product_group = product_group || product.product_group;
         product.name = name || product.name;
         product.code = code || product.code;
@@ -228,8 +231,11 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 export const createSale = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { quantity, product, status, order_id, pins } = req.body;
-        const userId = req.user ? req.user._id : null; // Verifica si hay un usuario autenticado
+        const { quantity, product, status, order_id, pins, user } = req.body;
+        const userId = req.user ? req.user._id : null;
+
+        console.log("Usuario en req.user:", req.user);
+        console.log("Usuario en req.body:", user);
 
         const adminBalance = await AdminBalance.findOne();
         if (!adminBalance) {
@@ -237,48 +243,65 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
-        let user = null;
-        let userBalance = 0;
-
-        if (userId) {
-            user = await User.findById(userId);
-            if (!user) {
-                res.status(404).json({ error: 'Usuario no encontrado' });
-                return;
-            }
-
-            if (user.saldo < quantity) {
-                res.status(400).json({ error: 'Saldo insuficiente para el usuario' });
-                return;
-            }
-
-            userBalance = user.saldo;
-        }
-
-        if (adminBalance.saldo < quantity) {
-            res.status(400).json({ error: 'Saldo insuficiente del administrador' });
-            return;
-        }
+        let userData = null;
+        let isClient = false;
 
         const session = await mongoose.startSession();
         session.startTransaction();
 
         try {
-            if (user) {
-                user.saldo -= quantity;
-                await user.save({ session });
+            if (userId) {
+                const foundUser = await User.findById(userId).session(session);
+                if (!foundUser) {
+                    res.status(404).json({ error: 'Usuario no encontrado' });
+                    return;
+                }
+
+                userData = {
+                    id: foundUser._id,
+                    handle: foundUser.handle,
+                    name: foundUser.name,
+                    email: foundUser.email
+                };
+
+                if (foundUser.role === 'cliente') {
+                    isClient = true;
+
+                    if (foundUser.saldo < quantity) {
+                        res.status(400).json({ error: 'Saldo insuficiente para el usuario' });
+                        return;
+                    }
+
+                    // Asegurar que el saldo se actualice con precisión de dos decimales
+                    foundUser.saldo = parseFloat((foundUser.saldo - quantity).toFixed(2));
+                    await foundUser.save({ session });
+                }
+            } else if (user) {
+                userData = {
+                    id: new mongoose.Types.ObjectId(user.id),
+                    handle: user.handle,
+                    name: user.name,
+                    email: user.email
+                };
             }
 
-            adminBalance.saldo -= quantity;
+            if (adminBalance.saldo < quantity) {
+                res.status(400).json({ error: 'Saldo insuficiente del administrador' });
+                return;
+            }
+
+            // Asegurar que el saldo del administrador se actualice con precisión de dos decimales
+            adminBalance.saldo = parseFloat((adminBalance.saldo - quantity).toFixed(2));
             await adminBalance.save({ session });
 
+            await User.updateMany(
+                { role: { $in: ['admin', 'vendedor', 'master'] } },
+                { $set: { saldo: adminBalance.saldo } },
+                { session }
+            );
+
             const sale = new Sale({
-                user: user ? { 
-                    id: user._id, 
-                    handle: user.handle, 
-                    name: user.name, 
-                    email: user.email 
-                } : null, 
+                user: userData,
                 quantity,
                 product,
                 status,

@@ -31,10 +31,12 @@ const productSchema = new Schema({
   },
   price: {
     type: Number,
-    required: true
+    required: true,
+    set: (v: any) => parseFloat(v)
   },
   special_price: {
-    type: Number
+    type: Number,
+    set: (v: any) => v != null ? parseFloat(v) : v 
   },
   available: {
     type: Boolean,

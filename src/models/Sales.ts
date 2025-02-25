@@ -24,6 +24,8 @@ const saleSchema = new Schema({
     },
     quantity: { type: Number, required: true },
     product: { type: String, required: true },
+    productName: { type: String, required: true },  
+    totalPrice: { type: Number, required: true },   
     status: { type: String, required: true },
     order_id: { type: String, required: true },
     pins: [
@@ -36,5 +38,6 @@ const saleSchema = new Schema({
 });
 
 const Sale = mongoose.model<ISale>('Sale', saleSchema);
+
 
 export default Sale;

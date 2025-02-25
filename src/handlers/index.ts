@@ -9,6 +9,7 @@ import { generateJWT } from '../utils/jwt';
 import Product from '../models/Product';
 import Sale from '../models/Sales';
 import mongoose from 'mongoose';
+import moment from 'moment';
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -84,14 +85,12 @@ export const updateAdminBalance = async (req: Request, res: Response): Promise<v
             hashedApiSecret = await bcrypt.hash(api_secret, 10);
         }
 
-        // Actualizar el saldo del administrador con precisión de dos decimales
         adminBalance.api_key = hashedApiKey;
         adminBalance.api_secret = hashedApiSecret;
         adminBalance.saldo = parseFloat(saldo.toFixed(2));
 
         await adminBalance.save();
 
-        // Actualizar el saldo de los usuarios con roles admin, vendedor y master
         await User.updateMany(
             { role: { $in: ['admin', 'vendedor', 'master'] } },
             { $set: { saldo: parseFloat(saldo.toFixed(2)) } }
@@ -231,7 +230,7 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 export const createSale = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { quantity, product, status, order_id, pins, user } = req.body;
+        const { quantity, product, status, order_id, pins, user, totalPrice, productName } = req.body;
         const userId = req.user ? req.user._id : null;
 
         console.log("Usuario en req.user:", req.user);
@@ -272,7 +271,6 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                         return;
                     }
 
-                    // Asegurar que el saldo se actualice con precisión de dos decimales
                     foundUser.saldo = parseFloat((foundUser.saldo - quantity).toFixed(2));
                     await foundUser.save({ session });
                 }
@@ -290,7 +288,6 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                 return;
             }
 
-            // Asegurar que el saldo del administrador se actualice con precisión de dos decimales
             adminBalance.saldo = parseFloat((adminBalance.saldo - quantity).toFixed(2));
             await adminBalance.save({ session });
 
@@ -304,6 +301,8 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                 user: userData,
                 quantity,
                 product,
+                productName,      
+                totalPrice,       
                 status,
                 order_id,
                 pins
@@ -320,6 +319,91 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
             session.endSession();
             throw error;
         }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
+
+export const getAllSales = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const sales = await Sale.find().populate('product user');
+        res.status(200).json(sales);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
+export const getUserSales = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const userId = req.params.userId;
+        const sales = await Sale.find({ 'user.id': userId }).populate('product user');
+
+        if (!sales.length) {
+            res.status(404).json({ error: 'No se encontraron ventas para este usuario' });
+            return;
+        }
+
+        res.status(200).json(sales);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
+export const getSalesByDate = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { date } = req.query;
+
+        if (!date || typeof date !== 'string') {
+            res.status(400).json({ error: 'La fecha es obligatoria y debe ser un string' });
+            return;
+        }
+
+        const startOfDay = moment(String(date), "YYYY-MM-DD").startOf('day').toDate();
+        const endOfDay = moment(String(date), "YYYY-MM-DD").endOf('day').toDate();
+
+
+        const sales = await Sale.find({
+            created_at: { $gte: startOfDay, $lte: endOfDay }
+        }).populate('product user');
+
+        if (!sales.length) {
+            res.status(404).json({ error: 'No se encontraron ventas para esa fecha' });
+            return;
+        }
+
+        res.status(200).json(sales);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
+export const getUserSalesByDate = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { userId, date } = req.params;
+        if (!date) {
+            res.status(400).json({ error: 'La fecha es obligatoria' });
+            return;
+        }
+
+        const startOfDay = moment(String(date)).startOf('day').toDate();
+        const endOfDay = moment(String(date)).endOf('day').toDate();
+
+        const sales = await Sale.find({
+            'user.id': userId,
+            createdAt: { $gte: startOfDay, $lte: endOfDay }
+        }).populate('product user');
+
+        if (!sales.length) {
+            res.status(404).json({ error: 'No se encontraron ventas para este usuario en esa fecha' });
+            return;
+        }
+
+        res.status(200).json(sales);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error en el servidor' });

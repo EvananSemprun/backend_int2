@@ -6,6 +6,7 @@ export interface ISale extends Document {
         handle: string;
         name: string;
         email: string;
+        role: string;
     };
     quantity: number;
     product: string;
@@ -20,7 +21,8 @@ const saleSchema = new Schema({
         id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
         handle: { type: String, required: false },
         name: { type: String, required: false },
-        email: { type: String, required: false }
+        email: { type: String, required: false },
+        role: { type: String, required: false }  
     },
     quantity: { type: Number, required: true },
     product: { type: String, required: true },

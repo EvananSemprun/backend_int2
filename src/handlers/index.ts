@@ -156,7 +156,7 @@ export const getUser = async (req: Request, res: Response) => {
 
 export const getUserCounts = async (req: Request, res: Response) => {
     try {
-        if (!req.user || req.user.role !== 'admin') {
+        if (!req.user || req.user.role !== 'master') {
             return res.status(403).json({ error: 'No autorizado' });
         }
 

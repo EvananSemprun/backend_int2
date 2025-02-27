@@ -1,15 +1,14 @@
-import type { Request, Response } from 'express';
 import User from "../models/User";
-import { checkPassword, hashPassword } from '../utils/auth'
 import slug from 'slug'
-import { validationResult } from 'express-validator'
-import AdminBalance from '../models/admin_balance';
-import bcrypt from 'bcrypt'
-import { generateJWT } from '../utils/jwt';
-import Product from '../models/Product';
 import Sale from '../models/Sales';
-import mongoose from 'mongoose';
+import Product from '../models/Product';
 import moment from 'moment';
+import mongoose from 'mongoose';
+import AdminBalance from '../models/admin_balance';
+import { generateJWT } from '../utils/jwt';
+import { validationResult } from 'express-validator'
+import { checkPassword, hashPassword } from '../utils/auth'
+import type { Request, Response } from 'express';
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -82,12 +81,17 @@ export const updateAdminBalance = async (req: Request, res: Response): Promise<v
             return;
         }
 
-        adminBalance.saldo += parseFloat(saldo.toFixed(2));
+        // Asegurarnos de que 'saldo' es un número de punto flotante y redondearlo a 2 decimales antes de sumarlo
+        const saldoToAdd = parseFloat(saldo).toFixed(2);
+        adminBalance.saldo += parseFloat(saldoToAdd);
+        adminBalance.currentSaldo = adminBalance.saldo;  // Sincronización
+
         await adminBalance.save();
 
+        // Actualizamos el saldo de los usuarios
         await User.updateMany(
             { role: { $in: ['vendedor', 'master'] } },
-            { $inc: { saldo: parseFloat(saldo.toFixed(2)) } }
+            { $inc: { saldo: parseFloat(saldoToAdd) } }
         );
 
         res.status(200).json({
@@ -99,6 +103,7 @@ export const updateAdminBalance = async (req: Request, res: Response): Promise<v
     }
 };
 
+
 export const getAdminBalance = async (req: Request, res: Response): Promise<void> => {
     try {
         const adminBalance = await AdminBalance.findOne().sort({ created_at: -1 }).limit(1);
@@ -108,12 +113,16 @@ export const getAdminBalance = async (req: Request, res: Response): Promise<void
             return;
         }
 
-        res.status(200).json({ saldo: adminBalance.saldo });
+        res.status(200).json({
+            saldo: adminBalance.saldo,
+            currentSaldo: adminBalance.currentSaldo  // Incluimos currentSaldo en la respuesta
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error en el servidor' });
     }
 };
+
 
 export const login = async (req: Request, res: Response) => {
 

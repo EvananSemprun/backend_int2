@@ -6,7 +6,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
-  role: 'admin' | 'vendedor' | 'cliente'| 'master';
+  role: 'admin' | 'vendedor' | 'cliente' | 'master';
   saldo: number;
 }
 
@@ -47,18 +47,17 @@ const userSchema = new Schema({
     set: (v: any) => parseFloat((parseFloat(v)).toFixed(2)), 
     validate: {
       validator: async function (value: number) {
-        if (this.role === 'cliente') {
+        if (this.role === 'cliente' || this.role === 'admin') {
           return value >= 100;
-        } else if (['admin', 'vendedor', 'master'].includes(this.role)) {
+        } else if (['vendedor', 'master'].includes(this.role)) {
           const adminBalance = await AdminBalance.findOne().sort({ created_at: -1 }).limit(1);
           return adminBalance && value === adminBalance.saldo;
         }
         return true;
       },
-      message: 'El saldo debe ser al menos 100 o el mismo saldo que el administrador para los roles admin, vendedor o master.'
+      message: 'El saldo debe ser al menos 100 para clientes y administradores, o igual al saldo del administrador para vendedores y masters.'
     }
   }
-  
 });
 
 userSchema.index({ handle: 1, email: 1 }, { unique: true });

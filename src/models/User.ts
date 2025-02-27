@@ -8,6 +8,7 @@ export interface IUser extends Document {
   password: string;
   role: 'admin' | 'vendedor' | 'cliente' | 'master';
   saldo: number;
+  rango: 'ultrap' | 'diamante' | 'oro' | 'bronce';
 }
 
 const userSchema = new Schema({
@@ -39,12 +40,12 @@ const userSchema = new Schema({
     type: String,
     enum: ['admin', 'vendedor', 'cliente', 'master'],
     required: true
-  },  
+  },
   saldo: {
     type: Number,
     min: 100,
     default: 100,
-    set: (v: any) => parseFloat((parseFloat(v)).toFixed(2)), 
+    set: (v: any) => parseFloat((parseFloat(v)).toFixed(2)),
     validate: {
       validator: async function (value: number) {
         if (this.role === 'cliente' || this.role === 'admin') {
@@ -57,6 +58,11 @@ const userSchema = new Schema({
       },
       message: 'El saldo debe ser al menos 100 para clientes y administradores, o igual al saldo del administrador para vendedores y masters.'
     }
+  },
+  rango: {
+    type: String,
+    enum: ['ultrap', 'diamante', 'oro', 'bronce'],
+    required: true
   }
 });
 

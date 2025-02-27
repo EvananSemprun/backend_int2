@@ -13,7 +13,7 @@ import moment from 'moment';
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { email, password, role, saldo: userSaldo } = req.body;
+        const { email, password, role, saldo: userSaldo, rango } = req.body;
 
         const userExists = await User.findOne({ email });
         if (userExists) {
@@ -29,16 +29,15 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
         }
 
         let saldo = 0;
+        let assignedRango = '';
 
         if (role === 'cliente' || role === 'admin') {
-            // Admin y cliente tienen saldo individual
             if (!userSaldo || userSaldo < 100) {
                 res.status(400).json({ error: 'El saldo debe ser al menos 100' });
                 return;
             }
             saldo = userSaldo;
         } else if (role === 'vendedor' || role === 'master') {
-            // Vendedores y masters siguen dependiendo del adminBalance
             const adminBalance = await AdminBalance.findOne().sort({ created_at: -1 }).limit(1);
             if (adminBalance) {
                 saldo = adminBalance.saldo;
@@ -48,10 +47,23 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
             }
         }
 
-        const user = new User(req.body);
-        user.password = await hashPassword(password);
-        user.handle = handle;
-        user.saldo = saldo;
+        if (['admin', 'vendedor', 'master'].includes(role)) {
+            assignedRango = 'ultrap';
+        } else if (role === 'cliente') {
+            if (!['diamante', 'oro', 'bronce'].includes(rango)) {
+                res.status(400).json({ error: 'El rango para clientes debe ser diamante, oro o bronce' });
+                return;
+            }
+            assignedRango = rango;
+        }
+
+        const user = new User({
+            ...req.body,
+            password: await hashPassword(password),
+            handle,
+            saldo,
+            rango: assignedRango
+        });
 
         await user.save();
         res.status(201).send('Registro Creado Correctamente');
@@ -86,7 +98,6 @@ export const updateAdminBalance = async (req: Request, res: Response): Promise<v
         res.status(500).json({ error: 'Error en el servidor' });
     }
 };
-
 
 export const getAdminBalance = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -241,7 +252,6 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                 };
 
                 if (foundUser.role === 'cliente' || foundUser.role === 'admin') {
-                    // Clientes y admins tienen saldo individual
                     if (foundUser.saldo < totalPrice) {
                         res.status(400).json({ error: 'Saldo insuficiente' });
                         return;

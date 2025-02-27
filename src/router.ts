@@ -53,12 +53,10 @@ router.post('/auth/login',
 )
 
 router.put('/admin/balance',
-    body('api_key').optional().notEmpty().withMessage('La API key es obligatoria si se incluye'),
-    body('api_secret').optional().notEmpty().withMessage('El API secret es obligatorio si se incluye'),
     body('saldo').isNumeric().withMessage('El saldo debe ser un número'),
     handleInputErrors,
     updateAdminBalance
-);
+)
 
 router.get('/admin/balance', getAdminBalance);
 
@@ -94,7 +92,6 @@ router.post('/products',
     handleInputErrors,
     createProduct
 );
-
 
 router.get('/products', getProducts);
 

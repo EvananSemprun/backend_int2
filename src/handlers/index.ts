@@ -62,7 +62,7 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
 
 export const updateAdminBalance = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { api_key, api_secret, saldo } = req.body;
+        const { saldo } = req.body;
 
         const adminBalance = await AdminBalance.findOne({});
         if (!adminBalance) {
@@ -70,42 +70,23 @@ export const updateAdminBalance = async (req: Request, res: Response): Promise<v
             return;
         }
 
-        if (saldo < adminBalance.saldo) {
-            res.status(400).json({ error: 'El saldo no puede ser menor al saldo actual' });
-            return;
-        }
-
-        let hashedApiKey = adminBalance.api_key;
-        let hashedApiSecret = adminBalance.api_secret;
-
-        if (api_key !== adminBalance.api_key) {
-            hashedApiKey = await bcrypt.hash(api_key, 10);
-        }
-
-        if (api_secret !== adminBalance.api_secret) {
-            hashedApiSecret = await bcrypt.hash(api_secret, 10);
-        }
-
-        adminBalance.api_key = hashedApiKey;
-        adminBalance.api_secret = hashedApiSecret;
-        adminBalance.saldo = parseFloat(saldo.toFixed(2));
-
+        adminBalance.saldo += parseFloat(saldo.toFixed(2));
         await adminBalance.save();
 
-        // Solo actualizamos vendedores y masters, NO administradores
         await User.updateMany(
             { role: { $in: ['vendedor', 'master'] } },
-            { $set: { saldo: parseFloat(saldo.toFixed(2)) } }
+            { $inc: { saldo: parseFloat(saldo.toFixed(2)) } } 
         );
 
         res.status(200).json({
-            message: 'Saldo del administrador actualizado correctamente y saldo de vendedores y masters actualizado'
+            message: 'Saldo del administrador actualizado correctamente y saldo de vendedores y masters incrementado'
         });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error en el servidor' });
     }
 };
+
 
 export const getAdminBalance = async (req: Request, res: Response): Promise<void> => {
     try {

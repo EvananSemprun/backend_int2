@@ -10,6 +10,9 @@ export interface ISale extends Document {
     };
     quantity: number;
     product: string;
+    productName: string;
+    totalPrice: number;
+    moneydisp: number;  // Campo agregado para el saldo disponible
     status: string;
     order_id: string;
     pins: { serial: string; key: string }[];
@@ -22,12 +25,13 @@ const saleSchema = new Schema({
         handle: { type: String, required: false },
         name: { type: String, required: false },
         email: { type: String, required: false },
-        role: { type: String, required: false }  
+        role: { type: String, required: false }
     },
     quantity: { type: Number, required: true },
     product: { type: String, required: true },
-    productName: { type: String, required: true },  
-    totalPrice: { type: Number, required: true },   
+    productName: { type: String, required: true },
+    totalPrice: { type: Number, required: true },
+    moneydisp: { type: Number, required: true },  // Campo agregado
     status: { type: String, required: true },
     order_id: { type: String, required: true },
     pins: [
@@ -40,6 +44,5 @@ const saleSchema = new Schema({
 });
 
 const Sale = mongoose.model<ISale>('Sale', saleSchema);
-
 
 export default Sale;

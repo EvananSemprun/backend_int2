@@ -243,239 +243,74 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
         const session = await mongoose.startSession();
         session.startTransaction();
 
+        const updateUserBalance = async (userBalance: any, isUserAdmin: boolean = false) => {
+            if (userBalance.saldo < totalPrice) {
+                res.status(400).json({ error: `${isUserAdmin ? 'Saldo insuficiente para el admin' : 'Saldo insuficiente para el cliente'}` });
+                return false;
+            }
+
+            const newBalance = parseFloat((userBalance.saldo - totalPrice).toFixed(2));
+            if (isNaN(newBalance)) {
+                res.status(400).json({ error: 'Saldo inválido después de la operación' });
+                return false;
+            }
+
+            userBalance.saldo = newBalance;
+
+            if (!(userBalance instanceof mongoose.Model)) {
+                await User.updateOne(
+                    { _id: userBalance.id }, 
+                    { $set: { saldo: newBalance } }, 
+                    { session }
+                );
+            } else {
+                await userBalance.save({ session });
+            }
+
+            return true;
+        };
+
         try {
-            if (userId) {
-                const foundUser = await User.findById(userId).session(session);
-                if (!foundUser) {
+            let moneydisp = 0;
+            if (userId || user) {
+                const currentUser = userId ? await User.findById(userId).session(session) : user;
+                if (!currentUser) {
                     res.status(404).json({ error: 'Usuario no encontrado' });
                     return;
                 }
 
                 userData = {
-                    id: foundUser._id,
-                    handle: foundUser.handle,
-                    name: foundUser.name,
-                    email: foundUser.email,
-                    role: foundUser.role
+                    id: currentUser._id,
+                    handle: currentUser.handle,
+                    name: currentUser.name,
+                    email: currentUser.email,
+                    role: currentUser.role
                 };
 
-                // Si el usuario es cliente, validamos su saldo
-                if (foundUser.role === 'cliente') {
-                    if (foundUser.saldo < totalPrice) {
-                        res.status(400).json({ error: 'Saldo insuficiente para el cliente' });
-                        return;
-                    }
+                const isUserAdmin = currentUser.role === 'admin' || currentUser.role === 'cliente';
+                if (!(await updateUserBalance(currentUser, isUserAdmin))) return;
 
-                    // Calculamos el saldo del cliente después de la venta
-                    const newSaldo = parseFloat((foundUser.saldo - totalPrice).toFixed(2));
+                moneydisp = parseFloat(currentUser.saldo.toFixed(2));
 
-                    if (isNaN(newSaldo)) {
-                        res.status(400).json({ error: 'Saldo inválido después de la operación' });
-                        return;
-                    }
-
-                    foundUser.saldo = newSaldo;
-                    await foundUser.save({ session });
-
-                    // Si el cliente compra al administrador, actualizamos el saldo del administrador
-                    if (adminBalance.saldo < totalPrice) {
-                        res.status(400).json({ error: 'Saldo insuficiente del administrador' });
-                        return;
-                    }
-
-                    const newAdminSaldo = parseFloat((adminBalance.saldo - totalPrice).toFixed(2));
-
-                    if (isNaN(newAdminSaldo)) {
-                        res.status(400).json({ error: 'Saldo inválido después de la operación del administrador' });
-                        return;
-                    }
-
-                    adminBalance.saldo = newAdminSaldo;
-                    await adminBalance.save({ session });
-
-                    // Actualizamos el saldo de los usuarios con rol master y vendedor
-                    await User.updateMany(
-                        { role: { $in: ['master', 'vendedor'] } },
-                        { $set: { saldo: newAdminSaldo } },
-                        { session }
-                    );
-
-                } else if (foundUser.role === 'admin') {
-                    // Si el admin realiza la compra, validamos su saldo
-                    if (foundUser.saldo < totalPrice) {
-                        res.status(400).json({ error: 'Saldo insuficiente para el admin' });
-                        return;
-                    }
-
-                    // Calculamos el saldo del admin después de la venta
-                    const newAdminSaldo = parseFloat((foundUser.saldo - totalPrice).toFixed(2));
-
-                    if (isNaN(newAdminSaldo)) {
-                        res.status(400).json({ error: 'Saldo inválido después de la operación del admin' });
-                        return;
-                    }
-
-                    foundUser.saldo = newAdminSaldo;
-                    await foundUser.save({ session });
-
-                    // Si el administrador compra, actualizamos el saldo del adminBalance
-                    if (adminBalance.saldo < totalPrice) {
-                        res.status(400).json({ error: 'Saldo insuficiente del administrador' });
-                        return;
-                    }
-
-                    const newAdminBalanceSaldo = parseFloat((adminBalance.saldo - totalPrice).toFixed(2));
-
-                    if (isNaN(newAdminBalanceSaldo)) {
-                        res.status(400).json({ error: 'Saldo inválido después de la operación del adminBalance' });
-                        return;
-                    }
-
-                    adminBalance.saldo = newAdminBalanceSaldo;
-                    await adminBalance.save({ session });
-
-                    // Actualizamos el saldo de los usuarios con rol master y vendedor
-                    await User.updateMany(
-                        { role: { $in: ['master', 'vendedor'] } },
-                        { $set: { saldo: newAdminBalanceSaldo } },
-                        { session }
-                    );
-                } else {
-                    // Si no es cliente ni admin, validamos el saldo del adminBalance
-                    if (adminBalance.saldo < totalPrice) {
-                        res.status(400).json({ error: 'Saldo insuficiente del administrador' });
-                        return;
-                    }
-
-                    // Calculamos el saldo del administrador después de la compra
-                    const newAdminBalanceSaldo = parseFloat((adminBalance.saldo - totalPrice).toFixed(2));
-
-                    if (isNaN(newAdminBalanceSaldo)) {
-                        res.status(400).json({ error: 'Saldo inválido después de la operación del administrador' });
-                        return;
-                    }
-
-                    adminBalance.saldo = newAdminBalanceSaldo;
-                    await adminBalance.save({ session });
-
-                    // Actualizamos el saldo de los usuarios con rol admin, vendedor y master
-                    await User.updateMany(
-                        { role: { $in: ['admin', 'vendedor', 'master'] } },
-                        { $set: { saldo: newAdminBalanceSaldo } },
-                        { session }
-                    );
+                if (adminBalance.saldo < totalPrice) {
+                    res.status(400).json({ error: 'Saldo insuficiente del administrador' });
+                    return;
                 }
-            } else if (user) {
-                userData = {
-                    id: new mongoose.Types.ObjectId(user.id),
-                    handle: user.handle,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role
-                };
 
-                // Si el usuario es cliente, validamos su saldo
-                if (user.role === 'cliente') {
-                    if (user.saldo < totalPrice) {
-                        res.status(400).json({ error: 'Saldo insuficiente para el cliente' });
-                        return;
-                    }
-
-                    const newSaldo = parseFloat((user.saldo - totalPrice).toFixed(2));
-
-                    if (isNaN(newSaldo)) {
-                        res.status(400).json({ error: 'Saldo inválido después de la operación' });
-                        return;
-                    }
-
-                    await User.updateOne(
-                        { _id: user.id },
-                        { $set: { saldo: newSaldo } },
-                        { session }
-                    );
-
-                    if (adminBalance.saldo < totalPrice) {
-                        res.status(400).json({ error: 'Saldo insuficiente del administrador' });
-                        return;
-                    }
-
-                    const newAdminSaldo = parseFloat((adminBalance.saldo - totalPrice).toFixed(2));
-
-                    if (isNaN(newAdminSaldo)) {
-                        res.status(400).json({ error: 'Saldo inválido después de la operación del administrador' });
-                        return;
-                    }
-
-                    adminBalance.saldo = newAdminSaldo;
-                    await adminBalance.save({ session });
-
-                    await User.updateMany(
-                        { role: { $in: ['master', 'vendedor'] } },
-                        { $set: { saldo: newAdminSaldo } },
-                        { session }
-                    );
-
-                } else if (user.role === 'admin') {
-                    if (user.saldo < totalPrice) {
-                        res.status(400).json({ error: 'Saldo insuficiente para el admin' });
-                        return;
-                    }
-
-                    const newAdminSaldo = parseFloat((user.saldo - totalPrice).toFixed(2));
-
-                    if (isNaN(newAdminSaldo)) {
-                        res.status(400).json({ error: 'Saldo inválido después de la operación del admin' });
-                        return;
-                    }
-
-                    await User.updateOne(
-                        { _id: user.id },
-                        { $set: { saldo: newAdminSaldo } },
-                        { session }
-                    );
-
-                    if (adminBalance.saldo < totalPrice) {
-                        res.status(400).json({ error: 'Saldo insuficiente del administrador' });
-                        return;
-                    }
-
-                    const newAdminBalanceSaldo = parseFloat((adminBalance.saldo - totalPrice).toFixed(2));
-
-                    if (isNaN(newAdminBalanceSaldo)) {
-                        res.status(400).json({ error: 'Saldo inválido después de la operación del adminBalance' });
-                        return;
-                    }
-
-                    adminBalance.saldo = newAdminBalanceSaldo;
-                    await adminBalance.save({ session });
-
-                    await User.updateMany(
-                        { role: { $in: ['master', 'vendedor'] } },
-                        { $set: { saldo: newAdminBalanceSaldo } },
-                        { session }
-                    );
-                } else {
-                    if (adminBalance.saldo < totalPrice) {
-                        res.status(400).json({ error: 'Saldo insuficiente del administrador' });
-                        return;
-                    }
-
-                    const newAdminBalanceSaldo = parseFloat((adminBalance.saldo - totalPrice).toFixed(2));
-
-                    if (isNaN(newAdminBalanceSaldo)) {
-                        res.status(400).json({ error: 'Saldo inválido después de la operación del administrador' });
-                        return;
-                    }
-
-                    adminBalance.saldo = newAdminBalanceSaldo;
-                    await adminBalance.save({ session });
-
-                    await User.updateMany(
-                        { role: { $in: ['admin', 'vendedor', 'master'] } },
-                        { $set: { saldo: newAdminBalanceSaldo } },
-                        { session }
-                    );
+                const newAdminBalance = parseFloat((adminBalance.saldo - totalPrice).toFixed(2));
+                if (isNaN(newAdminBalance)) {
+                    res.status(400).json({ error: 'Saldo inválido después de la operación del administrador' });
+                    return;
                 }
+
+                adminBalance.saldo = newAdminBalance;
+                await adminBalance.save({ session });
+
+                await User.updateMany(
+                    { role: { $in: ['master', 'vendedor'] } },
+                    { $set: { saldo: newAdminBalance } },
+                    { session }
+                );
             }
 
             const sale = new Sale({
@@ -484,6 +319,7 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                 product,
                 productName,
                 totalPrice,
+                moneydisp,
                 status,
                 order_id,
                 pins

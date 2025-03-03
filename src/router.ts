@@ -29,8 +29,8 @@ router.post('/auth/register',
         return true;
     }),
     body('rango').custom((value, { req }) => {
-        if (req.body.role === 'cliente' && !['diamante', 'oro', 'bronce'].includes(value)) {
-            throw new Error('El rango para clientes debe ser diamante, oro o bronce');
+        if (req.body.role === 'cliente' && !['oro', 'plata', 'bronce'].includes(value)) {
+            throw new Error('El rango para clientes debe ser oro, plata o bronce');
         }
         return true;
     }),

@@ -49,8 +49,8 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
         if (['admin', 'vendedor', 'master'].includes(role)) {
             assignedRango = 'ultrap';
         } else if (role === 'cliente') {
-            if (!['diamante', 'oro', 'bronce'].includes(rango)) {
-                res.status(400).json({ error: 'El rango para clientes debe ser diamante, oro o bronce' });
+            if (!['oro', 'plata', 'bronce'].includes(rango)) {
+                res.status(400).json({ error: 'El rango para clientes debe ser oro, plata o bronce' });
                 return;
             }
             assignedRango = rango;
@@ -103,7 +103,6 @@ export const updateAdminBalance = async (req: Request, res: Response): Promise<v
     }
 };
 
-
 export const getAdminBalance = async (req: Request, res: Response): Promise<void> => {
     try {
         const adminBalance = await AdminBalance.findOne().sort({ created_at: -1 }).limit(1);
@@ -122,7 +121,6 @@ export const getAdminBalance = async (req: Request, res: Response): Promise<void
         res.status(500).json({ error: 'Error en el servidor' });
     }
 };
-
 
 export const login = async (req: Request, res: Response) => {
 
@@ -173,14 +171,14 @@ export const getUserCounts = async (req: Request, res: Response) => {
 
 export const createProduct = async (req: Request, res: Response) => {
     try {
-        const { product_group, name, code, type, price, special_price, available } = req.body;
+        const { product_group, name, code, type, price, price_oro, price_plata, price_bronce, available } = req.body;
 
         const productExists = await Product.findOne({ code });
         if (productExists) {
             return res.status(409).json({ error: 'El producto con este código ya está registrado' });
         }
 
-        const product = new Product({ product_group, name, code, type, price, special_price, available });
+        const product = new Product({ product_group, name, code, type, price, price_oro, price_plata, price_bronce, available });
         await product.save();
         res.status(201).json({ message: 'Producto creado exitosamente', product });
     } catch (error) {
@@ -200,7 +198,7 @@ export const getProducts = async (req: Request, res: Response) => {
 export const updateProduct = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { product_group, name, code, type, price, special_price, available } = req.body;
+        const { product_group, name, code, type, price, price_oro, price_plata, price_bronce, available } = req.body;
 
         const product = await Product.findById(id);
         if (!product) {
@@ -219,7 +217,9 @@ export const updateProduct = async (req: Request, res: Response) => {
         product.code = code || product.code;
         product.type = type || product.type;
         product.price = price || product.price;
-        product.special_price = special_price || product.special_price;
+        product.price_oro = price_oro || product.price_oro;
+        product.price_plata = price_plata || product.price_plata;
+        product.price_bronce = price_bronce || product.price_bronce;
         product.available = available || product.available;
 
         await product.save();

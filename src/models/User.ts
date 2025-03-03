@@ -8,7 +8,7 @@ export interface IUser extends Document {
   password: string;
   role: 'admin' | 'vendedor' | 'cliente' | 'master';
   saldo: number;
-  rango: 'ultrap' | 'diamante' | 'oro' | 'bronce';
+  rango: 'ultrap' | 'oro' | 'plata' | 'bronce';
 }
 
 const userSchema = new Schema({
@@ -61,7 +61,7 @@ const userSchema = new Schema({
   },
   rango: {
     type: String,
-    enum: ['ultrap', 'diamante', 'oro', 'bronce'],
+    enum: ['ultrap', 'oro', 'plata', 'bronce'],
     required: true
   }
 });

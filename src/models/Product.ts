@@ -6,7 +6,9 @@ export interface IProduct extends Document {
   code: string;
   type: string;
   price: number;
-  special_price?: number;
+  price_oro: number;
+  price_plata: number;
+  price_bronce: number;
   available: boolean;
   created_at: Date;
 }
@@ -34,9 +36,20 @@ const productSchema = new Schema({
     required: true,
     set: (v: any) => parseFloat(v)
   },
-  special_price: {
+  price_oro: {
     type: Number,
-    set: (v: any) => v != null ? parseFloat(v) : v 
+    required: true,
+    set: (v: any) => parseFloat(v)
+  },
+  price_plata: {
+    type: Number,
+    required: true,
+    set: (v: any) => parseFloat(v)
+  },
+  price_bronce: {
+    type: Number,
+    required: true,
+    set: (v: any) => parseFloat(v)
   },
   available: {
     type: Boolean,

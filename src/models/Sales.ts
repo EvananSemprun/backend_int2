@@ -12,7 +12,7 @@ export interface ISale extends Document {
     product: string;
     productName: string;
     totalPrice: number;
-    moneydisp: number;  // Campo agregado para el saldo disponible
+    moneydisp: number;
     status: string;
     order_id: string;
     pins: { serial: string; key: string }[];
@@ -31,7 +31,7 @@ const saleSchema = new Schema({
     product: { type: String, required: true },
     productName: { type: String, required: true },
     totalPrice: { type: Number, required: true },
-    moneydisp: { type: Number, required: true },  // Campo agregado
+    moneydisp: { type: Number, required: true }, 
     status: { type: String, required: true },
     order_id: { type: String, required: true },
     pins: [

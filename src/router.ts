@@ -93,32 +93,18 @@ router.post('/products',
 router.get('/products', getProducts);
 
 router.put('/products/:id',
-    body('product_group')
-        .optional()
-        .notEmpty()
-        .withMessage('El grupo de producto no puede estar vacío'),
-    body('name')
-        .optional()
-        .notEmpty()
-        .withMessage('El nombre del producto no puede estar vacío'),
-    body('code')
-        .optional()
-        .notEmpty()
-        .withMessage('El código del producto no puede estar vacío')
-        .isLength({ min: 3 })
-        .withMessage('El código debe tener al menos 3 caracteres'),
-    body('type')
-        .optional()
-        .notEmpty()
-        .withMessage('El tipo de producto no puede estar vacío'),
-    body('price')
+    body('price_oro')
         .optional()
         .isFloat({ min: 0 })
-        .withMessage('El precio debe ser un número positivo'),
-    body('special_price')
+        .withMessage('El precio de oro debe ser un número positivo'),
+    body('price_plata')
         .optional()
         .isFloat({ min: 0 })
-        .withMessage('El precio especial debe ser un número positivo'),
+        .withMessage('El precio de plata debe ser un número positivo'),
+    body('price_bronce')
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage('El precio de bronce debe ser un número positivo'),
     body('available')
         .optional()
         .isBoolean()

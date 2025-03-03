@@ -198,33 +198,27 @@ export const getProducts = async (req: Request, res: Response) => {
 export const updateProduct = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { product_group, name, code, type, price, price_oro, price_plata, price_bronce, available } = req.body;
+
+        if (!id) {
+            return res.status(400).json({ error: 'ID del producto no proporcionado' });
+        }
+
+        const { price_oro, price_plata, price_bronce, available } = req.body;
 
         const product = await Product.findById(id);
         if (!product) {
             return res.status(404).json({ error: 'Producto no encontrado' });
         }
 
-        if (code && code !== product.code) {
-            const productExists = await Product.findOne({ code });
-            if (productExists) {
-                return res.status(409).json({ error: 'Ya existe un producto con este código' });
-            }
-        }
-
-        product.product_group = product_group || product.product_group;
-        product.name = name || product.name;
-        product.code = code || product.code;
-        product.type = type || product.type;
-        product.price = price || product.price;
-        product.price_oro = price_oro || product.price_oro;
-        product.price_plata = price_plata || product.price_plata;
-        product.price_bronce = price_bronce || product.price_bronce;
-        product.available = available || product.available;
+        if (price_oro !== undefined) product.price_oro = price_oro;
+        if (price_plata !== undefined) product.price_plata = price_plata;
+        if (price_bronce !== undefined) product.price_bronce = price_bronce;
+        if (available !== undefined) product.available = available;
 
         await product.save();
         res.status(200).json({ message: 'Producto actualizado correctamente', product });
     } catch (error) {
+        console.error('Error al actualizar el producto:', error);
         res.status(500).json({ error: 'Error al actualizar el producto' });
     }
 };

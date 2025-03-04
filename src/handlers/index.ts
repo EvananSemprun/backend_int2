@@ -364,14 +364,16 @@ export const getUserSales = async (req: Request, res: Response): Promise<void> =
 
 export const updateUserBalance = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { userId, amount, transactionUserName } = req.body;  
+        const { userId, amount, transactionUserName, role } = req.body;
 
+        // Buscar el usuario cliente
         const user = await User.findById(userId);
         if (!user) {
             res.status(404).json({ error: 'Usuario no encontrado' });
             return;
         }
 
+        // Verificar que el usuario sea un cliente o admin
         if (!['cliente', 'admin'].includes(user.role)) {
             res.status(400).json({ error: 'Solo los clientes y administradores pueden actualizar saldo' });
             return;
@@ -379,16 +381,35 @@ export const updateUserBalance = async (req: Request, res: Response): Promise<vo
 
         const previousBalance = user.saldo;
 
+        // Actualizar saldo del cliente (sumar saldo)
         user.saldo = parseFloat((user.saldo + amount).toFixed(2));
         await user.save();
 
+        // Si el usuario es un admin, debemos restar el saldo al admin que hizo la transacción
+        if (role === 'admin') {
+            const adminUser = await User.findOne({ handle: transactionUserName, role: 'admin' });
+            if (adminUser) {
+                // Verificar si el admin tiene saldo suficiente
+                if (adminUser.saldo < amount) {
+                    res.status(400).json({ error: 'Saldo insuficiente en la cuenta del administrador' });
+                    return;
+                }
+                adminUser.saldo = parseFloat((adminUser.saldo - amount).toFixed(2));
+                await adminUser.save();
+            } else {
+                res.status(400).json({ error: 'Administrador no encontrado' });
+                return;
+            }
+        }
+
+        // Registrar la transacción
         const transaction = new Transaction({
             userId: user._id,
             amount,
             previousBalance,
             type: amount > 0 ? 'recarga' : 'retiro',
             created_at: new Date(),
-            transactionUserName: transactionUserName,  
+            transactionUserName: transactionUserName,
         });
 
         await transaction.save();
@@ -399,6 +420,7 @@ export const updateUserBalance = async (req: Request, res: Response): Promise<vo
         res.status(500).json({ error: 'Error en el servidor' });
     }
 };
+
 
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {
     try {

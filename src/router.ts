@@ -2,7 +2,7 @@ import { body } from 'express-validator'
 import { Router } from 'express';
 import { authenticate } from './middleware/auth';
 import { handleInputErrors } from './middleware/validation'
-import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale, getAllSales, getUserSales } from './handlers';
+import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale, getAllSales, getUserSales, updateUserBalance, getTransactions, getClients } from './handlers';
 
 const router = Router();
 
@@ -119,5 +119,18 @@ router.get('/sales', authenticate, getAllSales);
 router.get('/sales/user/:userId', authenticate, getUserSales);
 router.get('/sales/user/:userId/date/:date', authenticate, getUserSales); 
 
+router.get('/users/clients', getClients);
+
+router.put('/user/balance',
+    body('userId').notEmpty().withMessage('El ID del usuario es obligatorio'),
+    body('amount').isNumeric().withMessage('El monto debe ser un número'),
+    handleInputErrors,
+    updateUserBalance
+);
+
+router.get('/transactions/:userId',
+    authenticate,
+    getTransactions
+)
 
 export default router;

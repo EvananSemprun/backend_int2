@@ -9,6 +9,7 @@ import { generateJWT } from '../utils/jwt';
 import { validationResult } from 'express-validator'
 import { checkPassword, hashPassword } from '../utils/auth'
 import type { Request, Response } from 'express';
+import Transaction from "../models/Transaction";
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -81,14 +82,12 @@ export const updateAdminBalance = async (req: Request, res: Response): Promise<v
             return;
         }
 
-        // Asegurarnos de que 'saldo' es un número de punto flotante y redondearlo a 2 decimales antes de sumarlo
         const saldoToAdd = parseFloat(saldo).toFixed(2);
         adminBalance.saldo += parseFloat(saldoToAdd);
-        adminBalance.currentSaldo = adminBalance.saldo;  // Sincronización
+        adminBalance.currentSaldo = adminBalance.saldo;  
 
         await adminBalance.save();
 
-        // Actualizamos el saldo de los usuarios
         await User.updateMany(
             { role: { $in: ['vendedor', 'master'] } },
             { $inc: { saldo: parseFloat(saldoToAdd) } }
@@ -114,7 +113,7 @@ export const getAdminBalance = async (req: Request, res: Response): Promise<void
 
         res.status(200).json({
             saldo: adminBalance.saldo,
-            currentSaldo: adminBalance.currentSaldo  // Incluimos currentSaldo en la respuesta
+            currentSaldo: adminBalance.currentSaldo 
         });
     } catch (error) {
         console.error(error);
@@ -360,5 +359,71 @@ export const getUserSales = async (req: Request, res: Response): Promise<void> =
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
+export const updateUserBalance = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { userId, amount, transactionUserName } = req.body;  
+
+        const user = await User.findById(userId);
+        if (!user) {
+            res.status(404).json({ error: 'Usuario no encontrado' });
+            return;
+        }
+
+        if (!['cliente', 'admin'].includes(user.role)) {
+            res.status(400).json({ error: 'Solo los clientes y administradores pueden actualizar saldo' });
+            return;
+        }
+
+        const previousBalance = user.saldo;
+
+        user.saldo = parseFloat((user.saldo + amount).toFixed(2));
+        await user.save();
+
+        const transaction = new Transaction({
+            userId: user._id,
+            amount,
+            previousBalance,
+            type: amount > 0 ? 'recarga' : 'retiro',
+            created_at: new Date(),
+            transactionUserName: transactionUserName,  
+        });
+
+        await transaction.save();
+
+        res.status(200).json({ message: 'Saldo actualizado correctamente', saldo: user.saldo });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
+export const getTransactions = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { userId } = req.params;
+
+        if (!userId) {
+            res.status(400).json({ error: 'ID de usuario es obligatorio' });
+            return;
+        }
+
+        const transactions = await Transaction.find({ userId }).sort({ created_at: -1 });
+
+        res.status(200).json(transactions);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
+export const getClients = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const clients = await User.find({ role: 'cliente' }).select('_id name email');
+        res.status(200).json(clients);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al obtener los clientes' });
     }
 };

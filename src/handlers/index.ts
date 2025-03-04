@@ -366,14 +366,12 @@ export const updateUserBalance = async (req: Request, res: Response): Promise<vo
     try {
         const { userId, amount, transactionUserName, role } = req.body;
 
-        // Buscar el usuario cliente
         const user = await User.findById(userId);
         if (!user) {
             res.status(404).json({ error: 'Usuario no encontrado' });
             return;
         }
 
-        // Verificar que el usuario sea un cliente o admin
         if (!['cliente', 'admin'].includes(user.role)) {
             res.status(400).json({ error: 'Solo los clientes y administradores pueden actualizar saldo' });
             return;
@@ -381,15 +379,12 @@ export const updateUserBalance = async (req: Request, res: Response): Promise<vo
 
         const previousBalance = user.saldo;
 
-        // Actualizar saldo del cliente (sumar saldo)
         user.saldo = parseFloat((user.saldo + amount).toFixed(2));
         await user.save();
 
-        // Si el usuario es un admin, debemos restar el saldo al admin que hizo la transacción
         if (role === 'admin') {
             const adminUser = await User.findOne({ handle: transactionUserName, role: 'admin' });
             if (adminUser) {
-                // Verificar si el admin tiene saldo suficiente
                 if (adminUser.saldo < amount) {
                     res.status(400).json({ error: 'Saldo insuficiente en la cuenta del administrador' });
                     return;
@@ -402,7 +397,6 @@ export const updateUserBalance = async (req: Request, res: Response): Promise<vo
             }
         }
 
-        // Registrar la transacción
         const transaction = new Transaction({
             userId: user._id,
             amount,
@@ -410,6 +404,10 @@ export const updateUserBalance = async (req: Request, res: Response): Promise<vo
             type: amount > 0 ? 'recarga' : 'retiro',
             created_at: new Date(),
             transactionUserName: transactionUserName,
+            userName: user.name,           
+            userEmail: user.email,         
+            userRole: user.role,           
+            userRango: user.rango,      
         });
 
         await transaction.save();
@@ -421,36 +419,9 @@ export const updateUserBalance = async (req: Request, res: Response): Promise<vo
     }
 };
 
-export const getTransactions = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { userId, role } = req.params; // Asegúrate de recibir el rol
-
-        if (!userId || !role) {
-            res.status(400).json({ error: 'ID de usuario y rol son obligatorios' });
-            return;
-        }
-
-        let transactions;
-
-        // Si el usuario es "master", obtenemos todas las transacciones
-        if (role === 'master') {
-            transactions = await Transaction.find().sort({ created_at: -1 });
-        } else {
-            // Si no es "master", solo obtenemos las transacciones de ese usuario
-            transactions = await Transaction.find({ userId }).sort({ created_at: -1 });
-        }
-
-        res.status(200).json(transactions);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error en el servidor' });
-    }
-};
-
 export const getAllTransactions = async (req: Request, res: Response): Promise<void> => {
     try {
         const transactions = await Transaction.find().sort({ created_at: -1 });
-
         res.status(200).json(transactions);
     } catch (error) {
         console.error(error);
@@ -458,6 +429,22 @@ export const getAllTransactions = async (req: Request, res: Response): Promise<v
     }
 };
 
+export const getTransactions = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { userId } = req.params;
+
+        if (!userId) {
+            res.status(400).json({ error: 'ID de usuario es obligatorio' });
+            return;
+        }
+
+        const transactions = await Transaction.find({ userId }).sort({ created_at: -1 });
+        res.status(200).json(transactions);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
 
 export const getClients = async (req: Request, res: Response): Promise<void> => {
     try {

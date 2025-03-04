@@ -2,7 +2,7 @@ import { body } from 'express-validator'
 import { Router } from 'express';
 import { authenticate } from './middleware/auth';
 import { handleInputErrors } from './middleware/validation'
-import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale, getAllSales, getUserSales, updateUserBalance, getTransactions, getClients, getAllTransactions } from './handlers';
+import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale, getAllSales, getUserSales, updateUserBalance, getClients, getAllTransactions, getTransactions } from './handlers';
 
 const router = Router();
 
@@ -128,8 +128,9 @@ router.put('/user/balance',
     updateUserBalance
 );
 
-router.get('/transactions/:userId', getTransactions);
-router.get('/transactions', getAllTransactions);
+router.get('/transactions', getAllTransactions);  // Para obtener todas las transacciones
+router.get('/transactions/:userId', getTransactions);  // Para obtener transacciones de un cliente
+
 
 
 export default router;

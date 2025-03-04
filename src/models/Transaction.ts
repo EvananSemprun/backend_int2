@@ -36,10 +36,24 @@ const transactionSchema = new Schema({
     transactionUserName: {  
         type: String,
         required: true
+    },
+    userName: {          
+        type: String,
+        required: true
+    },
+    userEmail: {         
+        type: String,
+        required: true
+    },
+    userRole: {          
+        type: String,
+        required: true
+    },
+    userRango: {        
+        type: String,
+        required: true
     }
 });
-
-
 
 const Transaction = mongoose.model<ITransaction>('Transaction', transactionSchema);
 

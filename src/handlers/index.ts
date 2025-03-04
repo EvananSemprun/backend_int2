@@ -421,17 +421,24 @@ export const updateUserBalance = async (req: Request, res: Response): Promise<vo
     }
 };
 
-
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { userId } = req.params;
+        const { userId, role } = req.params; // Asegúrate de recibir el rol
 
-        if (!userId) {
-            res.status(400).json({ error: 'ID de usuario es obligatorio' });
+        if (!userId || !role) {
+            res.status(400).json({ error: 'ID de usuario y rol son obligatorios' });
             return;
         }
 
-        const transactions = await Transaction.find({ userId }).sort({ created_at: -1 });
+        let transactions;
+
+        // Si el usuario es "master", obtenemos todas las transacciones
+        if (role === 'master') {
+            transactions = await Transaction.find().sort({ created_at: -1 });
+        } else {
+            // Si no es "master", solo obtenemos las transacciones de ese usuario
+            transactions = await Transaction.find({ userId }).sort({ created_at: -1 });
+        }
 
         res.status(200).json(transactions);
     } catch (error) {
@@ -439,6 +446,18 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
         res.status(500).json({ error: 'Error en el servidor' });
     }
 };
+
+export const getAllTransactions = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const transactions = await Transaction.find().sort({ created_at: -1 });
+
+        res.status(200).json(transactions);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
 
 export const getClients = async (req: Request, res: Response): Promise<void> => {
     try {

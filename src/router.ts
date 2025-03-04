@@ -2,7 +2,7 @@ import { body } from 'express-validator'
 import { Router } from 'express';
 import { authenticate } from './middleware/auth';
 import { handleInputErrors } from './middleware/validation'
-import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale, getAllSales, getUserSales, updateUserBalance, getTransactions, getClients } from './handlers';
+import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale, getAllSales, getUserSales, updateUserBalance, getTransactions, getClients, getAllTransactions } from './handlers';
 
 const router = Router();
 
@@ -128,9 +128,8 @@ router.put('/user/balance',
     updateUserBalance
 );
 
-router.get('/transactions/:userId',
-    authenticate,
-    getTransactions
-)
+router.get('/transactions/:userId', getTransactions);
+router.get('/transactions', getAllTransactions);
+
 
 export default router;

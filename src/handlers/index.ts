@@ -9,6 +9,7 @@ import { generateJWT } from '../utils/jwt';
 import { validationResult } from 'express-validator'
 import { checkPassword, hashPassword } from '../utils/auth'
 import type { Request, Response } from 'express';
+import moment from "moment";
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -392,6 +393,52 @@ export const getUserSales = async (req: Request, res: Response): Promise<void> =
     }
 };
 
+export const getSalesByDate = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const date = req.params.date;
+        const startOfDay = moment(date, 'DD/MM/YYYY').startOf('day').toDate();
+        const endOfDay = moment(date, 'DD/MM/YYYY').endOf('day').toDate();
+
+        // Buscar todas las ventas en esa fecha
+        const sales = await Sale.find({
+            created_at: { $gte: startOfDay, $lte: endOfDay }
+        });
+
+        const totalSales = sales.length;  // Total de ventas en el día
+
+        res.status(200).json({ date, totalSales });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
+export const getUserSalesByDate = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { userHandle, date } = req.params;
+        const startOfDay = moment(date, 'DD/MM/YYYY').startOf('day').toDate();
+        const endOfDay = moment(date, 'DD/MM/YYYY').endOf('day').toDate();
+
+        // Buscar las ventas de un usuario en esa fecha
+        const sales = await Sale.find({
+            'user.handle': userHandle,
+            created_at: { $gte: startOfDay, $lte: endOfDay }
+        });
+
+        const totalSales = sales.length;  // Total de ventas para el usuario en el día
+
+        if (totalSales === 0) {
+            res.status(404).json({ error: 'No se encontraron ventas para este usuario en esta fecha' });
+            return;
+        }
+
+        res.status(200).json({ userHandle, date, totalSales });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
 export const getUnusedPinsByUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const userHandle = req.params.userHandle;
@@ -412,6 +459,9 @@ export const getUnusedPinsByUser = async (req: Request, res: Response): Promise<
         res.status(500).json({ error: 'Error en el servidor' });
     }
 };
+
+
+
 export const updatePinStatus = async (req: Request, res: Response): Promise<void> => {
     try {
         const { userHandle, pinId } = req.params;

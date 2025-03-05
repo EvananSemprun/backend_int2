@@ -2,7 +2,7 @@ import { body } from 'express-validator'
 import { Router } from 'express';
 import { authenticate } from './middleware/auth';
 import { handleInputErrors } from './middleware/validation'
-import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale, getAllSales, getUserSales, updateUserBalance, getClients, getAllTransactions, getUserTransactions, getUnusedPinsByUser, updatePinStatus } from './handlers';
+import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale, getAllSales, getUserSales, updateUserBalance, getClients, getAllTransactions, getUserTransactions, getUnusedPinsByUser, updatePinStatus, getSalesByDate, getUserSalesByDate } from './handlers';
 
 const router = Router();
 
@@ -120,6 +120,11 @@ router.get('/sales/user/:userHandle', getUserSales);
 
 router.get('/sales/user/:userHandle/unused-pins', getUnusedPinsByUser);
 router.put('/sales/user/:userHandle/pins/:pinId', updatePinStatus);
+
+router.get('/sales/date/:date', getSalesByDate);
+router.get('/sales/user/:userHandle/date/:date', getUserSalesByDate);
+
+
 
 router.get('/users/clients', getClients);
 

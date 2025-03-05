@@ -17,7 +17,7 @@ export interface ISale extends Document {
     moneydisp: number;
     status: string;
     order_id: string;
-    pins: { serial: string; key: string }[];
+    pins: { serial: string; key: string;usado:boolean }[];
     created_at: Date;
 }
 
@@ -43,9 +43,10 @@ const saleSchema = new Schema({
     pins: [
         {
             serial: { type: String, required: false },
-            key: { type: String, required: true }
+            key: { type: String, required: true },
+            usado: { type: Boolean, default: false }
         }
-    ],
+    ],    
     created_at: { type: Date, default: Date.now }
 });
 

@@ -305,7 +305,31 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                 );
             }
 
-            const sale = new Sale({
+            interface Pin {
+                pin: string;
+                usado?: boolean;
+            }
+
+            interface SaleData {
+                user: {
+                    id: string;
+                    handle: string;
+                    name: string;
+                    email: string;
+                    role: string;
+                } | null;
+                quantity: number;
+                product: string;
+                productName: string;
+                totalPrice: number;
+                totalOriginalPrice: number;
+                moneydisp: number;
+                status: string;
+                order_id: string;
+                pins: Pin[];
+            }
+
+            const saleData: SaleData = {
                 user: userData,
                 quantity,
                 product,
@@ -315,8 +339,14 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                 moneydisp,
                 status,
                 order_id,
-                pins
-            });
+                pins: pins.map(pin => ({
+                    ...pin,
+                    usado: pin.usado ?? false 
+                }))
+            };
+
+            const sale = new Sale(saleData);
+            
 
             await sale.save({ session });
 
@@ -356,6 +386,52 @@ export const getUserSales = async (req: Request, res: Response): Promise<void> =
         }
 
         res.status(200).json(sales);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
+export const getUnusedPinsByUser = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const userHandle = req.params.userHandle;
+        const sales = await Sale.find({ 'user.handle': userHandle });
+
+        if (!sales.length) {
+            res.status(404).json({ error: 'No se encontraron ventas para este usuario' });
+            return;
+        }
+
+        const unusedPins = sales.flatMap(sale =>
+            sale.pins.filter(pin => !pin.usado) 
+        );
+
+        res.status(200).json({ unusedPins });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+export const updatePinStatus = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { userHandle, pinId } = req.params;
+        const { usado } = req.body;
+
+        const sale = await Sale.findOne({ 'user.handle': userHandle, 'pins.key': pinId });
+
+        if (!sale) {
+            res.status(404).json({ error: 'Pin no encontrado para este usuario' });
+            return;
+        }
+
+        const pin = sale.pins.find(p => p.key === pinId);
+        if (pin) {
+            pin.usado = usado;
+            await sale.save();
+            res.status(200).json({ message: 'Pin actualizado correctamente' });
+        } else {
+            res.status(404).json({ error: 'Pin no encontrado' });
+        }
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error en el servidor' });
@@ -432,8 +508,7 @@ export const getAllTransactions = async (req: Request, res: Response): Promise<v
 
 export const getUserTransactions = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { userHandle } = req.params;
-
+        const { userHandle } = req.params
         const transactions = await Transaction.find({
             $or: [
                 { transactionUserName: userHandle },

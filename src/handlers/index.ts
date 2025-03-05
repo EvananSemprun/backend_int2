@@ -223,7 +223,7 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 export const createSale = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { quantity, product, status, order_id, pins, user, totalPrice, productName } = req.body;
+        const { quantity, product, status, order_id, pins, user, totalPrice, totalOriginalPrice, productName } = req.body;
         const userId = req.user ? req.user._id : null;
         const adminBalance = await AdminBalance.findOne();
         if (!adminBalance) {
@@ -284,12 +284,12 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
 
                 moneydisp = parseFloat(currentUser.saldo.toFixed(2));
 
-                if (adminBalance.saldo < totalPrice) {
+                if (adminBalance.saldo < totalOriginalPrice) {
                     res.status(400).json({ error: 'Saldo insuficiente del administrador' });
                     return;
                 }
 
-                const newAdminBalance = parseFloat((adminBalance.saldo - totalPrice).toFixed(2));
+                const newAdminBalance = parseFloat((adminBalance.saldo - totalOriginalPrice).toFixed(2));
                 if (isNaN(newAdminBalance)) {
                     res.status(400).json({ error: 'Saldo inválido después de la operación del administrador' });
                     return;
@@ -305,13 +305,13 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                 );
             }
 
-            // Ahora se incluye el saleId, que será asignado automáticamente
             const sale = new Sale({
                 user: userData,
                 quantity,
                 product,
                 productName,
                 totalPrice,
+                totalOriginalPrice, // Guardar este valor si es necesario
                 moneydisp,
                 status,
                 order_id,
@@ -347,8 +347,8 @@ export const getAllSales = async (req: Request, res: Response): Promise<void> =>
 
 export const getUserSales = async (req: Request, res: Response): Promise<void> => {
     try {
-        const userId = req.params.userId;
-        const sales = await Sale.find({ 'user.id': userId }).populate('product user');
+        const userHandle = req.params.userHandle;
+        const sales = await Sale.find({ 'user.handle': userHandle }).populate('product user');
 
         if (!sales.length) {
             res.status(404).json({ error: 'No se encontraron ventas para este usuario' });

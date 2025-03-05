@@ -116,7 +116,7 @@ router.put('/products/:id',
 router.post('/sales', createSale);
 
 router.get('/sales', authenticate, getAllSales); 
-router.get('/sales/user/:userId', authenticate, getUserSales);
+router.get('/sales/user/:userHandle', getUserSales);
 router.get('/sales/user/:userId/date/:date', authenticate, getUserSales); 
 
 router.get('/users/clients', getClients);
@@ -128,8 +128,8 @@ router.put('/user/balance',
     updateUserBalance
 );
 
-router.get('/transactions', getAllTransactions);  // Para obtener todas las transacciones
-router.get('/transactions/:userId', getTransactions);  // Para obtener transacciones de un cliente
+router.get('/transactions', getAllTransactions); 
+router.get('/transactions/:userId', getTransactions); 
 
 
 

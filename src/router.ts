@@ -2,7 +2,7 @@ import { body } from 'express-validator'
 import { Router } from 'express';
 import { authenticate } from './middleware/auth';
 import { handleInputErrors } from './middleware/validation'
-import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale, getAllSales, getUserSales, updateUserBalance, getClients, getAllTransactions, getTransactions } from './handlers';
+import { createAccount, updateAdminBalance, login, getAdminBalance, getUser, getUserCounts, createProduct, getProducts, updateProduct, createSale, getAllSales, getUserSales, updateUserBalance, getClients, getAllTransactions, getUserTransactions } from './handlers';
 
 const router = Router();
 
@@ -115,9 +115,9 @@ router.put('/products/:id',
 
 router.post('/sales', createSale);
 
-router.get('/sales', authenticate, getAllSales); 
+router.get('/sales', authenticate, getAllSales);
 router.get('/sales/user/:userHandle', getUserSales);
-router.get('/sales/user/:userId/date/:date', authenticate, getUserSales); 
+router.get('/sales/user/:userId/date/:date', authenticate, getUserSales);
 
 router.get('/users/clients', getClients);
 
@@ -129,8 +129,6 @@ router.put('/user/balance',
 );
 
 router.get('/transactions', getAllTransactions); 
-router.get('/transactions/:userId', getTransactions); 
-
-
+router.get('/transactions/:userHandle', getUserTransactions);
 
 export default router;

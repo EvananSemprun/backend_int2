@@ -311,7 +311,7 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                 product,
                 productName,
                 totalPrice,
-                totalOriginalPrice, // Guardar este valor si es necesario
+                totalOriginalPrice,
                 moneydisp,
                 status,
                 order_id,
@@ -408,6 +408,7 @@ export const updateUserBalance = async (req: Request, res: Response): Promise<vo
             userEmail: user.email,
             userRole: user.role,
             userRango: user.rango,
+            userhandle: user.handle, 
         });
 
         await transaction.save();
@@ -425,24 +426,25 @@ export const getAllTransactions = async (req: Request, res: Response): Promise<v
         res.status(200).json(transactions);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error en el servidor' });
+        res.status(500).json({ error: 'Error en el servidor al obtener todas las transacciones' });
     }
 };
 
-export const getTransactions = async (req: Request, res: Response): Promise<void> => {
+export const getUserTransactions = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { userId } = req.params;
+        const { userHandle } = req.params;
 
-        if (!userId) {
-            res.status(400).json({ error: 'ID de usuario es obligatorio' });
-            return;
-        }
+        const transactions = await Transaction.find({
+            $or: [
+                { transactionUserName: userHandle },
+                { userhandle: userHandle }
+            ]
+        }).sort({ created_at: -1 });
 
-        const transactions = await Transaction.find({ userId }).sort({ created_at: -1 });
         res.status(200).json(transactions);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error en el servidor' });
+        res.status(500).json({ error: 'Error en el servidor al obtener transacciones del usuario' });
     }
 };
 

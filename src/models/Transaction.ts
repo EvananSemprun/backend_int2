@@ -8,6 +8,12 @@ export interface ITransaction extends Document {
   previousBalance: number;
   type: 'recarga' | 'retiro';
   created_at: Date;
+  transactionUserName: string;
+  userName: string;
+  userEmail: string;
+  userRole: string;
+  userRango: string;
+  userhandle: string;
 }
 
 const transactionSchema = new Schema({
@@ -56,6 +62,10 @@ const transactionSchema = new Schema({
         required: true
     },
     userRango: {        
+        type: String,
+        required: true
+    },
+    userhandle: {       
         type: String,
         required: true
     }

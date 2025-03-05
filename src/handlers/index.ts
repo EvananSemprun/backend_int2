@@ -2,14 +2,13 @@ import User from "../models/User";
 import slug from 'slug'
 import Sale from '../models/Sales';
 import Product from '../models/Product';
-import moment from 'moment';
 import mongoose from 'mongoose';
+import Transaction from "../models/Transaction";
 import AdminBalance from '../models/admin_balance';
 import { generateJWT } from '../utils/jwt';
 import { validationResult } from 'express-validator'
 import { checkPassword, hashPassword } from '../utils/auth'
 import type { Request, Response } from 'express';
-import Transaction from "../models/Transaction";
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -84,7 +83,7 @@ export const updateAdminBalance = async (req: Request, res: Response): Promise<v
 
         const saldoToAdd = parseFloat(saldo).toFixed(2);
         adminBalance.saldo += parseFloat(saldoToAdd);
-        adminBalance.currentSaldo = adminBalance.saldo;  
+        adminBalance.currentSaldo = adminBalance.saldo;
 
         await adminBalance.save();
 
@@ -113,7 +112,7 @@ export const getAdminBalance = async (req: Request, res: Response): Promise<void
 
         res.status(200).json({
             saldo: adminBalance.saldo,
-            currentSaldo: adminBalance.currentSaldo 
+            currentSaldo: adminBalance.currentSaldo
         });
     } catch (error) {
         console.error(error);
@@ -252,8 +251,8 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
 
             if (!(userBalance instanceof mongoose.Model)) {
                 await User.updateOne(
-                    { _id: userBalance.id }, 
-                    { $set: { saldo: newBalance } }, 
+                    { _id: userBalance.id },
+                    { $set: { saldo: newBalance } },
                     { session }
                 );
             } else {
@@ -306,6 +305,7 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                 );
             }
 
+            // Ahora se incluye el saleId, que será asignado automáticamente
             const sale = new Sale({
                 user: userData,
                 quantity,
@@ -404,10 +404,10 @@ export const updateUserBalance = async (req: Request, res: Response): Promise<vo
             type: amount > 0 ? 'recarga' : 'retiro',
             created_at: new Date(),
             transactionUserName: transactionUserName,
-            userName: user.name,           
-            userEmail: user.email,         
-            userRole: user.role,           
-            userRango: user.rango,      
+            userName: user.name,
+            userEmail: user.email,
+            userRole: user.role,
+            userRango: user.rango,
         });
 
         await transaction.save();

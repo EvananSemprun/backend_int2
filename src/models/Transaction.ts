@@ -1,6 +1,8 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import Counter from './Counter';
 
 export interface ITransaction extends Document {
+  transactionId: number;
   userId: mongoose.Types.ObjectId;
   amount: number;
   previousBalance: number;
@@ -9,6 +11,10 @@ export interface ITransaction extends Document {
 }
 
 const transactionSchema = new Schema({
+    transactionId: { 
+        type: Number, 
+        unique: true 
+    },
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
@@ -52,6 +58,22 @@ const transactionSchema = new Schema({
     userRango: {        
         type: String,
         required: true
+    }
+});
+
+transactionSchema.pre('save', async function (next) {
+    if (!this.isNew) return next();
+
+    try {
+        const counter = await Counter.findOneAndUpdate(
+            { name: 'transactionId' },
+            { $inc: { value: 1 } },
+            { new: true, upsert: true }
+        );
+        this.transactionId = counter.value;
+        next();
+    } catch (error) {
+        next(error);
     }
 });
 

@@ -1,6 +1,8 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import Counter from './Counter';
 
 export interface ISale extends Document {
+    saleId: number;
     user?: {
         id: mongoose.Types.ObjectId;
         handle: string;
@@ -20,6 +22,10 @@ export interface ISale extends Document {
 }
 
 const saleSchema = new Schema({
+    saleId: { 
+        type: Number, 
+        unique: true 
+    },
     user: {
         id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
         handle: { type: String, required: false },
@@ -41,6 +47,22 @@ const saleSchema = new Schema({
         }
     ],
     created_at: { type: Date, default: Date.now }
+});
+
+saleSchema.pre('save', async function (next) {
+    if (!this.isNew) return next(); 
+
+    try {
+        const counter = await Counter.findOneAndUpdate(
+            { name: 'saleId' },
+            { $inc: { value: 1 } },
+            { new: true, upsert: true }
+        );
+        this.saleId = counter.value;
+        next();
+    } catch (error) {
+        next(error);
+    }
 });
 
 const Sale = mongoose.model<ISale>('Sale', saleSchema);

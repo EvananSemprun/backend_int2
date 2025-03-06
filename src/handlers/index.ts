@@ -340,12 +340,12 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
                 moneydisp,
                 status,
                 order_id,
-                pins: pins.map(pin => ({
+                pins: pins.map((pin: { usado: any; }) => ({
                     ...pin,
-                    usado: pin.usado ?? false 
+                    usado: pin.usado ?? false,
+                    productName 
                 }))
             };
-
             const sale = new Sale(saleData);
             
 
@@ -419,13 +419,12 @@ export const getUserSalesByDate = async (req: Request, res: Response): Promise<v
         const startOfDay = moment(date, 'DD/MM/YYYY').startOf('day').toDate();
         const endOfDay = moment(date, 'DD/MM/YYYY').endOf('day').toDate();
 
-        // Buscar las ventas de un usuario en esa fecha
         const sales = await Sale.find({
             'user.handle': userHandle,
             created_at: { $gte: startOfDay, $lte: endOfDay }
         });
 
-        const totalSales = sales.length;  // Total de ventas para el usuario en el día
+        const totalSales = sales.length;
 
         if (totalSales === 0) {
             res.status(404).json({ error: 'No se encontraron ventas para este usuario en esta fecha' });
@@ -459,8 +458,6 @@ export const getUnusedPinsByUser = async (req: Request, res: Response): Promise<
         res.status(500).json({ error: 'Error en el servidor' });
     }
 };
-
-
 
 export const updatePinStatus = async (req: Request, res: Response): Promise<void> => {
     try {
